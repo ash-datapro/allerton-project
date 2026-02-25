@@ -1,0 +1,3 @@
+repeat_flag,n_people,avg_regs,med_regs,avg_total_spend,med_total_spend,avg_ticket,med_ticket,avg_unique_classes,med_unique_classes,avg_tenure_days,med_tenure_days,avg_cancel_rate
+FALSE,2118,1,1,58.59301227573182,40,61.17091595845137,45,1,1,-Inf,-Inf,0.03635505193578848
+TRUE,1305,3.7869731800766284,3,337.1373639846743,150,81.71662615377926,65,2.784674329501916,2,-Inf,-Inf,0.052643393220410055
