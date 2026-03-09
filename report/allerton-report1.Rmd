@@ -1,0 +1,41 @@
+---
+title: "allerton-report1"
+author: "ash"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Dataset snapshot (Allerton Folk School)
+
+1.  Three linked operational views of the program
+    -   *Classes* describe supply (offerings, capacity, schedule, modality), *students* describe participant records, and *transactions* capture actual registration activity and payment behavior.
+2.  Demand, capacity, and fulfillment can be studied together
+    -   The data supports analysis of seat utilization, waitlist pressure, cancellations, online registration behavior, and the relationship between listed class capacity and realized enrollment.
+3.  Administrative data is rich but imperfect
+    -   Important fields such as prices, dates, names, and student attributes require cleaning and reconciliation across files. Missing values, duplicate people, and inconsistent text labels are part of the real analytical signal, not just noise.
+
+## Analysis
+
+### 1. Where are the individuals from who are registering?
+
+**Answer:** Mostly Illinois. Mostly from Urbana-Champaign and nearby towns.
+
+![](01_il_city_bubble_map.png)
+
+### 2. Which individuals are repeat attendees and what characteristics distinguish them?
+
+**Answer:** There are numerous repeat attendees. The top attendees have registered more than 17 times and have spent more than \$1000, with the highest attendee accounting for \$9200 for folk school events.
+
+![](02_repeat_attendees_top.png)
+
+### 3.Which individuals are buying at which price points?
+
+**Answer:** The events with the most registrants are the \$0, \$65, and \$200 events, each of which has been registered for more than 650 times.
+
+![](03_class_price_all_price_points.png)
