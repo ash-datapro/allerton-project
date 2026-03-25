@@ -1,0 +1,266 @@
+city_state,students,distance_miles,distance_note
+"Monticello, IL",529,0.3,matched
+"Monticello, Il, IL",2,0.3,matched
+"White Heath, IL",73,5.2,matched
+"Bement, IL",33,7.3,matched
+"De Land, IL",4,7.6,matched
+"Cisco, IL",18,8.2,matched
+"Ivesdale, IL",25,8.5,matched
+"Milmine, IL",10,9.2,matched
+"Seymour, IL",26,9.5,matched
+"Weldon, IL",10,11.2,matched
+"Bondville, IL",3,12.3,matched
+"Cerro Gordo, IL",28,12.5,matched
+"Sadorus, IL",9,12.7,matched
+"Mansfield, IL",18,13.2,matched
+"Argenta, IL",42,13.6,matched
+"Mahomet, IL",210,14.6,matched
+"Mahomet, IA",1,14.6,matched
+"Mahomet Illinois, IL",1,15,matched
+"Farmer City, IL",17,15.4,matched
+"Hammond, IL",3,16,matched
+"Oakley, IL",10,16.2,matched
+"Lane, IL",1,16.3,matched
+"Champaign Il, IL",2,16.6,matched
+"Oreana, IL",22,16.7,matched
+"Atwood, IL",18,16.8,matched
+"Tolono, IL",38,16.9,matched
+"Savoy, IL",118,17.1,matched
+"1117 Foothill Dr, IL",2,17.1,matched
+"14 Evergreen Square, IL",1,17.3,matched
+"Pesotum, IL",20,17.7,matched
+"Champaign, IL",1043,18.5,matched
+"61820-5817, IL",1,18.5,matched
+"Champaign, Il, IL",1,18.5,matched
+"Champaign,, IL",1,18.5,matched
+"Urbana, IL",408,20.2,matched
+"Maroa, IL",10,20.3,matched
+"Lake City, IL",4,20.4,matched
+"Forsyth, IL",25,21.1,matched
+"Tuscola, IL",42,21.8,matched
+"Bellflower, IL",6,21.8,matched
+"Lovington, IL",3,21.8,matched
+"Philo, IL",12,22,matched
+"Arthur, IL",14,22.3,matched
+"Fisher, IL",17,23.1,matched
+"Decatur, IL",234,23.7,matched
+"Mount Zion, IL",5,23.8,matched
+"Macon, IL",3,24.1,matched
+"Foosland, IL",4,24.3,matched
+"Wapella, IL",11,24.5,matched
+"Le Roy, IL",11,24.6,matched
+"Villa Grove, IL",17,25,matched
+"Dalton City, IL",2,25,matched
+"Dewey, IL",13,25.4,matched
+"Thomasboro, IL",5,25.4,matched
+"Sidney, IL",11,26.5,matched
+"Warrensburg, IL",6,26.7,matched
+"Camargo, IL",4,26.8,matched
+"Arcola, IL",4,27.6,matched
+"Bethany, IL",13,27.8,matched
+"St Joseph, IL",7,28.7,matched
+"St. Joseph, IL",4,28.7,matched
+"St.joseph, IL",2,28.7,matched
+"Heyworth, IL",8,29,matched
+"Rantoul, IL",19,29.4,matched
+"Sullivan, IL",18,29.7,matched
+"Downs, IL",8,30,matched
+"Broadlands, IL",2,31.8,matched
+"Gibson City, IL",6,32,matched
+"Homer, IL",9,32.6,matched
+"Beason, IL",2,32.8,matched
+"Ogden, IL",10,33.2,matched
+"Niantic, IL",1,33.6,matched
+"Ludlow, IL",1,34.2,matched
+"Newman, IL",7,35,matched
+"Gifford, IL",1,35,matched
+"Moweaqua, IL",4,36.6,matched
+"Shirley, IL",2,36.8,matched
+"Blue Mound, IL",1,36.9,matched
+"Illiopolis, IL",3,37.4,matched
+"Mt Pulaski, IL",1,37.6,matched
+"Penfield, IL",2,38.2,matched
+"Bloomington, IL",91,38.4,matched
+"Mattoon, IL",37,39,matched
+"Muncie, IL",3,39,matched
+"Paxton, IL",14,39.2,matched
+"Fairmount, IL",3,39.4,matched
+"Gays, IL",1,39.6,matched
+"Normal, IL",53,39.8,matched
+"Mount Auburn, IL",4,40.8,matched
+"Towanda, IL",5,40.9,matched
+"Melvin, IL",3,41.1,matched
+"Unit   103, IL",1,41.6,matched
+"Charleston, IL",16,42.4,matched
+"Oakwood, IL",3,42.5,matched
+"Lincoln, IL",19,42.6,matched
+"Loda, IL",5,43,matched
+"Assumption, IL",4,43.2,matched
+"Lexington, IL",3,43.9,matched
+"Shelbyville, IL",12,44.5,matched
+"Lerna, IL",1,44.8,matched
+"Ashmore, IL",3,45,matched
+"Potomac, IL",2,45.1,matched
+"Hudson, IL",11,45.6,matched
+"Catlin, IL",1,46.2,matched
+"Rankin, IL",2,46.8,matched
+"Danvers, IL",10,47.1,matched
+"Minier, IL",1,48.1,matched
+"Hartsburg, IL",1,48.4,matched
+"Buckley, IL",1,48.5,matched
+"Westville, IL",8,49.5,matched
+"Georgetown, IL",1,49.8,matched
+"Fairbury, IL",2,49.9,matched
+"Westfield, IL",2,50,matched
+"Chrisman, IL",3,50.2,matched
+"Danville, IL",26,50.4,matched
+"Taylorville, IL",8,50.6,matched
+"Chatsworth, IL",3,52.4,matched
+"Rochester, IL",7,54.4,matched
+"Paris, IL",6,54.8,matched
+"Sigel, IL",3,55.6,matched
+"Goodfield, IL",2,55.7,matched
+"Hoopeston, IL",1,56.6,matched
+"Shumway, IL",2,58.4,matched
+"Springfield, IL",52,59,matched
+"Pontiac, IL",3,59.1,matched
+"Tremont, IL",2,59.6,matched
+"Flanagan, IL",2,60.8,matched
+"Pawnee, IL",5,61.4,matched
+"Morton, IL",1,61.8,matched
+"Milford, IL",3,62.2,matched
+"Green Valley, IL",1,62.3,matched
+"Roanoke, IL",2,62.5,matched
+"Chatham, IL",7,64.8,matched
+"Metamora, IL",1,67.2,matched
+"Effingham, IL",16,67.5,matched
+"Odell, IL",4,67.6,matched
+"Pekin, IL",9,68,matched
+"East Peoria, IL",1,69.1,matched
+"Auburn, IL",6,69.2,matched
+"Peoria, IL",12,70.6,matched
+"Clifton, IL",2,71.2,matched
+"Mapleton, IL",3,71.6,matched
+"West Peoria, IL",2,72.1,matched
+"Pleasant Plains, IL",2,72.3,matched
+"Peoria Heights, IL",3,72.5,matched
+"Tallula, IL",1,72.5,matched
+"West Union, IL",1,74.1,matched
+"Vandalia, IL",2,78.9,matched
+"Marshall, IL",2,79.3,matched
+"Havana, IL",1,81,matched
+"Litchfield, IL",2,82.4,matched
+"Aroma Park, IL",2,83.1,matched
+"Robinson, IL",2,83.5,matched
+"Modesto, IL",1,84,matched
+"4908 Lindsey Rd, IL",2,84.8,matched
+"Kankakee, IL",1,85,matched
+"Bradley, IL",2,85.7,matched
+"Bourbonnais, IL",1,86.5,matched
+"Virginia, IL",1,87,matched
+"Coal City, IL",1,88.5,matched
+"Jacksonville, IL",2,90.2,matched
+"West Lafayette, IN",2,92.2,matched
+"Lafayette, IN",2,92.8,matched
+"Elwood, IL",1,98.2,matched
+"Beardstown, IL",1,98.6,matched
+"Manhattan, IL",1,101.3,matched
+"Princeton, IL",2,103.8,matched
+"St. Jos, IL",1,105.6,matched
+"Clinton, IL",40,109.3,matched
+"Mokena, IL",1,109.7,matched
+"Sheffield, IL",1,110.4,matched
+"Plainfield, IL",7,111.1,matched
+"Lockport, IL",1,111.4,matched
+"Wataga, IL",1,113.2,matched
+"Troy, IL",2,113.9,matched
+"Deland, IL",4,115.7,matched
+"Orland Park, IL",2,117.1,matched
+"Lemont, IL",1,117.7,matched
+"Bolingbrook, IL",1,118.6,matched
+"Midlothian, IL",3,119.3,matched
+"Griffith, IN",1,120.3,matched
+"Aurora, IL",1,120.4,matched
+"Collinsville, IL",2,120.5,matched
+"Woodridge, IL",2,122.7,matched
+"Naperville, IL",4,122.8,matched
+"Washington, IL",6,123.5,matched
+"Lisle, IL",5,125.4,matched
+"Downers Grove, IL",1,125.7,matched
+"Gary, IN",1,126.7,matched
+"Batavia, IL",1,126.8,matched
+"Windsor, IL",1,127.4,matched
+"Geneseo, IL",1,128.8,matched
+"Dekalb, IL",1,129.3,matched
+"Indianapolis, IN",2,129.4,matched
+"Portage, IN",1,129.7,matched
+"Saint Louis, MO",5,129.9,matched
+"Freeburg, IL",1,131.9,matched
+"County Farm Road, IL",1,132.9,matched
+"Prophetstown, IL",1,134.2,matched
+"Rock Falls, IL",1,134.7,matched
+"Oak Park, IL",2,135,matched
+"Chicago, IL",27,137.1,matched
+"Elgin, IL",1,139.9,matched
+"Dardenne Prairie, MO",2,144.4,matched
+"Skokie, IL",1,144.7,matched
+"Bettendorf, IA",1,145,matched
+"Morton Grove, IL",3,145.2,matched
+"Maynard Drive, IL",1,145.8,matched
+"Palatine, IL",1,146.7,matched
+"Glenview, IL",2,146.8,matched
+"Evanston, IL",2,147.2,matched
+"Highwood, IL",1,155.5,matched
+"Gurnee, IL",3,165.8,matched
+"Morganfield, KY",1,166,matched
+"Roscoe, IL",1,166.6,matched
+"Leroy, IL",9,168.2,matched
+"Rockton, IL",1,169.7,matched
+"My. Zion, IL",2,171.3,matched
+"Pleasant Prairie, WI",1,176.9,matched
+"Milwaukee, WI",1,211.1,matched
+"Lake Mills, WI",2,211.9,matched
+"Bevier, MO",1,212.7,matched
+"Monona, WI",1,213.6,matched
+"Nicholasville, KY",2,261.4,matched
+"Franklin, TN",2,298.6,matched
+"Smyrna, TN",1,301.3,matched
+"Somers, IA",1,345.4,matched
+"Lawrence, KS",1,362.9,matched
+"Hovland, MN",2,544.8,matched
+"Monticello, AL",1,588.5,matched
+"College Park, MD",1,624.8,matched
+"Troup, TX",1,656.3,matched
+"Dallas, TX",2,678.5,matched
+"Savannah, GA",1,690.3,matched
+"Savanah, GA",1,691.7,matched
+"Montclair, NJ",1,756.9,matched
+"Trumbull, CT",1,810.2,matched
+"Orlando, FL",2,893.8,matched
+"Miramar, FL",1,1083.7,matched
+"Great Falls, MT",1,1241.1,matched
+"Running Springs, CA",1,1617,matched
+"Tacoma, WA",2,1751.8,matched
+"Anacortes, WA",1,1768,matched
+"Olympia, WA",2,1772.4,matched
+"Da, IL",5,NA,unknown
+"Apt 1, IL",1,NA,unknown
+"God, IL",2,NA,unknown
+"Xx, IL",6,NA,unknown
+"Saint Joseph, IL",36,35,corrected
+"Unit #1102, IL",1,NA,unknown
+"Mt Zion, IL",19,35,corrected
+"Mt. Zion, IL",1,35,corrected
+"Champagin, IL",2,NA,unknown
+"Minticello, IL",2,NA,unknown
+"Virden, Illinois Mid, IL",2,NA,unknown
+"White Heatg, IL",2,NA,unknown
+"1920 S Harding Drive, IL",1,NA,unknown
+"70 W Woodlasaint Joseph, IL",1,NA,unknown
+"Arensville, IL",1,NA,unknown
+"Blomington, IL",1,NA,unknown
+"Champiagn, IL",1,NA,unknown
+"Chanpaign, IL",1,NA,unknown
+"Fairy Tale Land, IL",1,NA,unknown
+"Livington, IL",1,NA,unknown
+"Mattoo, IL",1,NA,unknown

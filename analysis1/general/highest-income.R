@@ -2,21 +2,30 @@ library(dplyr)
 library(ggplot2)
 library(forcats)
 library(scales)
+library(readr)
 
-best_selling_classes = folkclasses23_25 %>%
+highest_income_classes = folkclasses23_25 %>%
+  mutate(
+    price_num = parse_number(Price),
+    income = price_num * Registrants #formula
+  ) %>%
   group_by(Class_clean) %>%
-  summarise(registrations = sum(Registrants, na.rm = TRUE), .groups = "drop") %>%
-  arrange(desc(registrations)) %>%
+  summarise(
+    total_income = sum(income, na.rm = TRUE),
+    total_registrations = sum(Registrants, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_income)) %>%
   slice_head(n = 15)
 
-x_max = ceiling(max(best_selling_classes$registrations, na.rm = TRUE) / 10) * 10
+x_max = ceiling(max(highest_income_classes$total_income, na.rm = TRUE) / 100) * 100
 
 p = ggplot(
-  best_selling_classes,
-  aes(x = registrations, y = fct_reorder(Class_clean, registrations))
+  highest_income_classes,
+  aes(x = total_income, y = fct_reorder(Class_clean, total_income))
 ) +
   geom_segment(
-    aes(x = 0, xend = registrations, yend = Class_clean),
+    aes(x = 0, xend = total_income, yend = Class_clean),
     linewidth = 1,
     color = "#9ecae1"
   ) +
@@ -25,15 +34,15 @@ p = ggplot(
     color = "#08519c"
   ) +
   scale_x_continuous(
-    breaks = seq(0, x_max, by = 20),
+    breaks = seq(0, x_max, by = 2000),
     limits = c(0, x_max),
     expand = expansion(mult = c(0, 0.02)),
-    labels = label_number(accuracy = 1)
+    labels = label_dollar(accuracy = 1)
   ) +
   labs(
-    x = "Number of registrations",
+    x = "Total income",
     y = "Class name",
-    title = "Best-Selling Classes"
+    title = "Highest-Income Classes"
   ) +
   theme_minimal(base_size = 12) +
   theme(
@@ -49,7 +58,7 @@ p = ggplot(
 p
 
 ggsave(
-  filename = file.path(plots_dir, "best_selling_classes_lollipop_blue.png"),
+  filename = "~/Desktop/Project/allerton-project/analysis1/focused_plots/highest_income_classes.png",
   plot = p,
   width = 9,
   height = 6,
