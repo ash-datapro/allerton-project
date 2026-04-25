@@ -1,0 +1,1218 @@
+---
+title: "Allerton Folk School — Survey Data Cleaning"
+author: "Ha Pham"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    code_folding: show
+    df_print: paged
+subtitle: "Post-Course Survey Datasets 2023–2025"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>"
+)
+```
+
+---
+
+# 1. Setup & Package Loading
+
+Install packages if needed, then load them.
+
+```{r packages}
+# install.packages(c("tidyverse", "readxl", "writexl", "lubridate", "stringdist"))
+
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(lubridate)
+library(stringdist)
+```
+
+---
+
+# 2. File Paths & Version Map
+
+Map each file ID to its survey version (A, B, or C).
+
+- **Version A** — Q1 is a binary dummy matrix (one column per course)
+- **Version B** — Q1 is a free-text field (respondent typed course name)
+- **Version C** — Q1 free-text + Q2 attendance date field
+
+```{r file-map}
+# Set the folder containing your .xlsx files
+DATA_DIR <- "C:/Users/hahp2/OneDrive - University of Illinois - Urbana/Spring2026UIUC/STAT427 Statistical Consulting/Allerton Raw Data/Folk School Raw Data/Folk School Survey Results"   # change this to the path where your files are stored
+
+version_map <- tibble(
+  file_id = c("219227", "219228", "234953",
+              "227465", "234587", "234954", "234956",
+              "234955"),
+  survey_version = c("A", "A", "A",
+                     "B", "B", "B", "B",
+                     "C")
+)
+
+version_map
+```
+
+---
+
+# 3. Load All Files
+
+Read every file and immediately tag it with `source_file`, `survey_version`, and `respondent_id`. `bind_rows()` stacks them all — columns absent in some files are filled with `NA`.
+
+```{r load-files}
+frames_raw <- pmap(version_map, function(file_id, survey_version) {
+  path <- file.path(DATA_DIR, paste0(file_id, ".xlsx"))
+  df   <- read_excel(path, sheet = 1, col_types = "text")
+  df |>
+    mutate(
+      source_file    = file_id,
+      survey_version = survey_version,
+      respondent_id  = paste0(file_id, "_", sprintf("%04d", row_number()))
+    )
+})
+
+# Keep as a named list for per-file cleaning (do NOT bind_rows yet)
+names(frames_raw) <- version_map$file_id
+
+cat("Files loaded:\n")
+walk2(names(frames_raw), frames_raw, ~ cat(" ", .x, ":", nrow(.y), "rows,",
+                                            ncol(.y), "cols\n"))
+```
+
+---
+
+# 4. Canonical Course Name Lookup Table
+
+All known free-text course name variants mapped to their canonical name. Used for Version B and C normalization.
+
+```{r canonical-lookup}
+CANONICAL <- c(
+  # Weaving
+  "beginning weaving i"                     = "Beginning Weaving I",
+  "beginning weaving ii"                    = "Beginning Weaving II",
+  "beginning weaving 2"                     = "Beginning Weaving II",
+  "flat loom weaving"                       = "Beginning Weaving I",
+  "flat weaving"                            = "Beginning Weaving I",
+  "circular weaving"                        = "Beginning Weaving II",
+  "basket weaving"                          = "Basket Weaving",
+  "basket weaving: back to basics"          = "Basket Weaving",
+  "basketweaving: back to basics"           = "Basket Weaving",
+  "basket weaving: mantle basket"           = "Basket Weaving",
+  "weaving a mantel basket"                 = "Basket Weaving",
+  "warm and cozy basket weaving"            = "Basket Weaving",
+  "basket warm & cosy"                      = "Basket Weaving",
+  "basket weaving - bloom"                  = "Basket Weaving",
+  "basket weaving jan 18"                   = "Basket Weaving",
+  "mantle basket"                           = "Basket Weaving",
+  "basket making"                           = "Basket Weaving",
+  "warm and cozy basket with bonnie"        = "Coiled Basket Weaving",
+  "coiled baskets"                          = "Coiled Basket Weaving",
+  "coiled bowls"                            = "Coiled Basket Weaving",
+  "coiled fabrics"                          = "Coiled Basket Weaving",
+  "colorful coiled baskets"                 = "Coiled Basket Weaving",
+
+  # Embroidery / Fiber
+  "beginning embroidery"                    = "Beginning Embroidery",
+  "embroidery"                              = "Beginning Embroidery",
+  "embroidery 101"                          = "Beginning Embroidery",
+  "winter embroidery"                       = "Beginning Embroidery",
+  "needle felting"                          = "Needle Felting",
+  "needlefelting goldfinch"                 = "Needle Felting",
+  "needlefelt painted turtle"               = "Needle Felting",
+  "bee felting"                             = "Needle Felting",
+  "needle felting - bumblebee"              = "Needle Felting",
+  "feltneedling bumblebee"                  = "Needle Felting",
+  "creating a felt turtle"                  = "Needle Felting",
+  "wet felting"                             = "Wet Felting",
+  "felting"                                 = "Wet Felting",
+  "knitting 101"                            = "Knitting",
+  "knitting"                                = "Knitting",
+  "beginner knitting."                      = "Knitting",
+  "knitting 201 - mittens"                  = "Knitting",
+  "granny squares"                          = "Granny Squares Crochet",
+  "granny square"                           = "Granny Squares Crochet",
+  "granny sqaures"                          = "Granny Squares Crochet",
+  "crochet granny squares 101"              = "Granny Squares Crochet",
+  "beginning crochet"                       = "Granny Squares Crochet",
+  "crocheting 101"                          = "Granny Squares Crochet",
+  "meditative quilting"                     = "Meditative Slow Stitching",
+  "quilts:  meditative, slow stitching"     = "Meditative Slow Stitching",
+  "meditative slow stitching (quilting)"    = "Meditative Slow Stitching",
+  "slow stitching"                          = "Meditative Slow Stitching",
+  "quilting--meditative slow stitching by hand" = "Meditative Slow Stitching",
+  "beginner quilt making."                  = "Meditative Slow Stitching",
+  "macrame plant hanger"                    = "Macramé Plant Hanger",
+  "spinning yarn"                           = "Spinning Yarn",
+  "learn to spin yarn"                      = "Spinning Yarn",
+  "beaded jewelry"                          = "Beaded Jewelry",
+  "beaded jewlery"                          = "Beaded Jewelry",
+  "beading"                                 = "Beaded Jewelry",
+  "beaded jewelry with billie thiede."      = "Beaded Jewelry",
+  "beading with billie theide"              = "Beaded Jewelry",
+  "otanically inspired pendant & necklace  w/ billie theide" = "Beaded Jewelry",
+  "tufting the masters"                     = "Tufting the Masters",
+  "sew a button down shirt"                 = "Sewing",
+  "cordage"                                 = "Cordage",
+  "cordage on november 15"                  = "Cordage",
+  "chainmaille"                             = "Chainmaille",
+  "cyanotype"                               = "Cyanotype",
+
+  # Watercolor / Visual Art
+  "beginning watercolor"                    = "Beginning Watercolor",
+  "beginner watercolor"                     = "Beginning Watercolor",
+  "beginning watercolors"                   = "Beginning Watercolor",
+  "beginning watercolor painting"           = "Beginning Watercolor",
+  "watercolor painting for beginners"       = "Beginning Watercolor",
+  "intro to watercolors"                    = "Beginning Watercolor",
+  "introduction to water colors"            = "Beginning Watercolor",
+  "beginning water color"                   = "Beginning Watercolor",
+  "watercolor"                              = "Beginning Watercolor",
+  "bluebells watercolor class"              = "Beginning Watercolor",
+  "watercolor bluebells"                    = "Beginning Watercolor",
+  "beginner watercolor painting"            = "Beginning Watercolor",
+  "intermediate watercolor"                 = "Intermediate Watercolor",
+  "intermediate water color"                = "Intermediate Watercolor",
+  "intermediate watercolor: landscapes"     = "Intermediate Watercolor",
+  "watercolor travel journal"               = "Watercolor Travel Journal",
+  "travel journal watercolor"               = "Watercolor Travel Journal",
+  "watercolor journal"                      = "Watercolor Travel Journal",
+  "barn quilt painting"                     = "Barn Quilt Painting",
+  "barn quilt"                              = "Barn Quilt Painting",
+  "barn quilting"                           = "Barn Quilt Painting",
+  "barn quit painting"                      = "Barn Quilt Painting",
+  "11/15 barn quilt painting"               = "Barn Quilt Painting",
+  "barn quilt class"                        = "Barn Quilt Painting",
+  "prairie fire barn quilts with jane cade on 4/19/25" = "Barn Quilt Painting",
+  "barn quilts by jane cade (2/8/25)"       = "Barn Quilt Painting",
+  "santorini stone painting"                = "Santorini Stone Painting",
+  "santorini stone  painting by sara gentry" = "Santorini Stone Painting",
+  "painting santorini stones"               = "Santorini Stone Painting",
+  "stained glass"                           = "Stained Glass",
+  "beginner stained glass"                  = "Stained Glass",
+  "stain glass it was great !!!!!"          = "Stained Glass",
+  "mosaic"                                  = "Mosaic Art",
+  "intro to mosaic art"                     = "Mosaic Art",
+  "intro to mosaic"                         = "Mosaic Art",
+  "beginning mosaic"                        = "Mosaic Art",
+  "mossics"                                 = "Mosaic Art",
+  "mushroom mosiac"                         = "Mosaic Art",
+  "holiday tree mosaics"                    = "Mosaic Art",
+  "christmas tree mosaics"                  = "Mosaic Art",
+  "pastels"                                 = "Pastel Painting",
+  "pastels painting"                        = "Pastel Painting",
+  "intro to pastel painting taught by mandy roeing" = "Pastel Painting",
+  "acrylic pour painting"                   = "Acrylic Pour Painting",
+  "beginning drawing from nature"           = "Beginning Drawing from Nature",
+  "beginning pen and ink"                   = "Beginning Pen and Ink",
+  "printmaking in nature"                   = "Printmaking in Nature",
+  "printmaking in natute"                   = "Printmaking in Nature",
+  "nature printing with sally walsh"        = "Printmaking in Nature",
+  "mono printing using a gelatin plate"     = "Printmaking in Nature",
+  "autumn linoleum block printing"          = "Autumn Linoleum Block Printing",
+  "family fall printing workshop"           = "Family Fall Printing Workshop",
+  "candle painting"                         = "Candle Painting",
+  "holiday ornament painting"               = "Holiday Ornament Painting",
+  "needlepoint penguin"                     = "Needlepoint",
+
+  # Music
+  "improve your improv"                     = "Improve Your Improv",
+  "improve your improv."                    = "Improve Your Improv",
+  "improv"                                  = "Improve Your Improv",
+  "improv w/kyle tasch"                     = "Improve Your Improv",
+  "learn the guitar: get started the right way" = "Learn the Guitar",
+  "group beginning guitar"                  = "Learn the Guitar",
+  "learn guitar: get started the right way" = "Learn the Guitar",
+  "beginner mountain dulcimer"              = "Beginner Mountain Dulcimer",
+  "beginning mountain dulcimer"             = "Beginner Mountain Dulcimer",
+  "dulcimer"                                = "Beginner Mountain Dulcimer",
+  "dulcimer jam"                            = "Beginner Mountain Dulcimer",
+  "dulcimer jam may24"                      = "Beginner Mountain Dulcimer",
+  "beginning dulcimer"                      = "Beginner Mountain Dulcimer",
+
+  # Food & Cooking
+  "focaccia art"                            = "Focaccia Art",
+  "focaccia art bread class"                = "Focaccia Art",
+  "foccachia class"                         = "Focaccia Art",
+  "sourdough breadmaking"                   = "Sourdough Breadmaking",
+  "sourdough bread making"                  = "Sourdough Breadmaking",
+  "sourdough class with hannah"             = "Sourdough Breadmaking",
+  "intro to sourdough bread making"         = "Sourdough Breadmaking",
+  "beginner sourdough breadmaking"          = "Sourdough Breadmaking",
+  "sourdough"                               = "Sourdough Breadmaking",
+  "scone baking"                            = "Scone Baking",
+  "learn to bake scones"                    = "Scone Baking",
+  "the scone baking course"                 = "Scone Baking",
+  "how to make scones"                      = "Scone Baking",
+  "soap making"                             = "Soap Making",
+  "soap making demo"                        = "Soap Making",
+  "soap making demonstration"               = "Soap Making",
+  "soap making demonstration (sally walsh instructor)" = "Soap Making",
+  "soap-making on april 6, 2025"            = "Soap Making",
+  "making fresh mozzarella"                 = "Cheese & Mozzarella Making",
+  "making mozzerella"                       = "Cheese & Mozzarella Making",
+  "mozzarella cheese class"                 = "Cheese & Mozzarella Making",
+  "cheese making"                           = "Cheese & Mozzarella Making",
+  "wines of the world"                      = "Wines of the World",
+  "wine tasting"                            = "Wines of the World",
+  "wine"                                    = "Wines of the World",
+  "wine of the world"                       = "Wines of the World",
+  "talking and tasting. intro to wines"     = "Wines of the World",
+  "talking & tasting: an intro to wines of the world" = "Wines of the World",
+  "wines of the world: place"               = "Wines of the World",
+  "cooking with herbs"                      = "Cooking with Herbs",
+  "basics of plant-based eating"            = "Plant-Based Eating",
+  "basics of plant based eating"            = "Plant-Based Eating",
+  "basics of plant based eating with karla freeze"  = "Plant-Based Eating",
+  "basics of plant-based eating with karla freeze"  = "Plant-Based Eating",
+  "condiments"                              = "Condiments",
+  "eat your flowers"                        = "Eat Your Flowers",
+  "cookie decorating"                       = "Cookie Decorating",
+  "spring cookie decorating"                = "Cookie Decorating",
+  "food for thought"                        = "Food for Thought",
+
+  # Nature & Outdoors
+  "foraging walk"                           = "Foraging Walk",
+  "foraging"                                = "Foraging Walk",
+  "foraging 4/12"                           = "Foraging Walk",
+  "foraging - may 11"                       = "Foraging Walk",
+  "foraging walk - may 11, 2025"            = "Foraging Walk",
+  "may 24th foraging walk."                 = "Foraging Walk",
+  "foraging walks"                          = "Foraging Walk",
+  "foraging class with michael baker"       = "Foraging Walk",
+  "edible midwest natives"                  = "Foraging Walk",
+  "midwest edible natives"                  = "Foraging Walk",
+  "edible midwest natives."                 = "Foraging Walk",
+  "beginning mushroom foraging day 2"       = "Foraging Walk",
+  "advanced mycology"                       = "Advanced Mycology",
+  "intro to birding and ebird"              = "Intro to Birding",
+  "into to birding and ebird"               = "Intro to Birding",
+  "intro to birding"                        = "Intro to Birding",
+  "ebird class"                             = "Intro to Birding",
+  "tree identification"                     = "Tree Identification",
+  "tree hike"                               = "Tree Identification",
+  "tree i.d."                               = "Tree Identification",
+  "trees, shrubs, and vines: native plant identification" = "Tree Identification",
+  "winter botany"                           = "Tree Identification",
+  "rats, bats, and mice; mammals of illinois" = "Mammals of Illinois",
+  "mammals of illinois"                     = "Mammals of Illinois",
+  "plant propagation"                       = "Plant Propagation",
+  "propagation - pankau"                    = "Plant Propagation",
+  "fall equinox yoga"                       = "Fall Equinox Yoga",
+  "fall equinox yoga at the arboretum"      = "Fall Equinox Yoga",
+  "camping with your kids"                  = "Camping With Your Kids",
+
+  # Seasonal / Holiday
+  "holiday wreath making"                   = "Holiday Wreath Making",
+  "wreath making"                           = "Holiday Wreath Making",
+  "wreath making class"                     = "Holiday Wreath Making",
+  "wreath making with delight flower farm"  = "Holiday Wreath Making",
+  "holiday wreath making led by owner of delight flower farm" = "Holiday Wreath Making",
+  "holiday candle making"                   = "Holiday Candle Making",
+  "holiday history night"                   = "Holiday History Night",
+  "holiday history"                         = "Holiday History Night",
+  "simmer pot workshop"                     = "Simmer Pot Workshop",
+
+  # Flowers & Nature Crafts
+  "fall flower arranging"                   = "Flower Arranging",
+  "flower arranging"                        = "Flower Arranging",
+  "floral arrangement"                      = "Flower Arranging",
+  "flower arranging with delight flower farm" = "Flower Arranging",
+  "dyeing for blue"                         = "Dyeing for Blue",
+  "indigo dyeing"                           = "Indigo Dyeing",
+  "make your own incense"                   = "Make Your Own Incense",
+  "make your own incense."                  = "Make Your Own Incense",
+  "besoms: the witches' broom"              = "Besoms: The Witches' Broom",
+  "witches broom"                           = "Besoms: The Witches' Broom",
+
+  # Other Crafts
+  "introduction to bookbinding"             = "Introduction to Bookbinding",
+  "lamp rewiring"                           = "Lamp Rewiring",
+  "introductory wood carving"               = "Wood Carving",
+  "wood carving"                            = "Wood Carving",
+  "wood carving for beginners"              = "Wood Carving",
+  "fix it! create a home repair toolbox"    = "Fix It! Home Repair",
+  "fix it! picture framing basics"          = "Fix It! Home Repair",
+
+  # Wellness / Movement
+  "melt with mary"                          = "MELT with Mary",
+  "melt"                                    = "MELT with Mary",
+  "meld"                                    = "MELT with Mary",
+  "creating an individual path to wholeness" = "Creating an Individual Path to Wholeness",
+
+  # Social / Cultural
+  "historical dancing: a downton abbey ball" = "Historical Dancing",
+  "downtown abbey ball"                     = "Historical Dancing",
+  "dances of the gilded age"                = "Historical Dancing",
+  "historic dancing"                        = "Historical Dancing",
+  "introduction to tarot"                   = "Introduction to Tarot",
+  "tarot cards"                             = "Introduction to Tarot",
+  "introduction to tarot card reading"      = "Introduction to Tarot",
+  "beginners astrology"                     = "Introduction to Astrology",
+  "introduction to astrology with charlie ranbow wolf." = "Introduction to Astrology",
+  "the astrology class with charlie rainbow" = "Introduction to Astrology",
+  "creature design for worldbuilding and storytelling" = "Creature Design",
+
+  # Version C specific courses
+  "mary oliver poetry"                      = "Mary Oliver Poetry",
+  "shibori and indigo dyeing"               = "Shibori & Indigo Dyeing",
+  "shibori dyeing"                          = "Shibori & Indigo Dyeing",
+  "shibori stiching and natural indigo dye" = "Shibori & Indigo Dyeing",
+  "natural dye"                             = "Natural Dyeing",
+  "cyanotypes"                              = "Cyanotype",
+  "lace weaving"                            = "Lace Weaving",
+  "felting - otter"                         = "Needle Felting",
+  "backpacking"                             = "Backpacking",
+
+  # Version B file 234956 specific courses
+  "capoeira"                                = "Capoeira",
+  "wellness retreat and sculpture garden tour" = "Wellness Retreat & Sculpture Garden Tour",
+  "weaving i and weaving ii"                = "Beginning Weaving I",
+  "floral arrangements"                     = "Flower Arranging",
+  "bird walks, nature journaling, drawing from nature" = "Bird Walks & Nature Journaling",
+  "life drawing"                            = "Life Drawing",
+  "winter tree identificationknitting 101"  = "Tree Identification",
+  "history happy hour, multiple sessions"   = "History Happy Hour",
+  "wine..mike lee"                          = "Wines of the World",
+  "earth magic"                             = "Earth Magic",
+  "i have only taken yoga"                  = "Yoga",
+  "leah's freezer chicken dinners, anyuta gusakova's sketching/art experience, nate's tree id (& bird/owl hikes), and mushroom id course" = "Multiple Courses",
+
+  # Additional variants found across all files
+  "3 course meal with leah bodine 10/28"    = "Cooking Class with Leah Bodine",
+  "4h farm demo"                            = "4H Farm Demo",
+  "allerton wreath class"                   = "Holiday Wreath Making",
+  "barb quilt painting 12/14/2024"          = "Barn Quilt Painting",
+  "barn quilts"                             = "Barn Quilt Painting",
+  "basics of plant- based eating"           = "Plant-Based Eating",
+  "beginning crocheting"                    = "Granny Squares Crochet",
+  "beginning watercolor with sally walsh"   = "Beginning Watercolor",
+  "cookie decorating class - oct 27"        = "Cookie Decorating",
+  "course: great horned owls: hiding in plain sightdate/s: saturday, january 31, 2026" = "Great Horned Owls",
+  "crochet 101 - granny squares"            = "Granny Squares Crochet",
+  "crochet granny squares"                  = "Granny Squares Crochet",
+  "granny squares 101"                      = "Granny Squares Crochet",
+  "easy appetizer for entertaining"         = "Easy Entertaining Appetizers",
+  "easy appetizers."                        = "Easy Entertaining Appetizers",
+  "easy entertaining appetizers (nov. 18)"  = "Easy Entertaining Appetizers",
+  "fall floral arranging"                   = "Flower Arranging",
+  "fall flower arranging with rick orr"     = "Flower Arranging",
+  "family cooking class"                    = "Family Cooking Class",
+  "great horned owl"                        = "Great Horned Owls",
+  "great horned owls"                       = "Great Horned Owls",
+  "great horned owls- hiding in plain sight" = "Great Horned Owls",
+  "great horned owls: hiding in plain sight" = "Great Horned Owls",
+  "holiday cookie decorating"               = "Cookie Decorating",
+  "holiday wreath making,  dec 4"           = "Holiday Wreath Making",
+  "horned owls"                             = "Great Horned Owls",
+  "owls"                                    = "Great Horned Owls",
+  "intro to guitar"                         = "Learn the Guitar",
+  "intro to mosaics"                        = "Mosaic Art",
+  "intro to mosiacs"                        = "Mosaic Art",
+  "mosaic class"                            = "Mosaic Art",
+  "introduction to.tarot card readimg"      = "Introduction to Tarot",
+  "it was supposed to be a botanical pendant and earrings made with silver metal clay." = "Beaded Jewelry",
+  "learn to spin, november"                 = "Spinning Yarn",
+  "spinning"                                = "Spinning Yarn",
+  "leather inlays and overlays"             = "Leather Workshop",
+  "leather workshop"                        = "Leather Workshop",
+  "the farms: leather working: inlay and overlay techniques" = "Leather Workshop",
+  "lino cut"                                = "Lino Cuts & Prints",
+  "lino cuts & prints"                      = "Lino Cuts & Prints",
+  "lino cuts and prints"                    = "Lino Cuts & Prints",
+  "lino-cuts and prints"                    = "Lino Cuts & Prints",
+  "plant based eating"                      = "Plant-Based Eating",
+  "songwriting with paul kotheimer!"        = "Songwriting",
+  "stained glass \u2013 snowmen"           = "Stained Glass",
+  "tarot with charlie"                      = "Introduction to Tarot",
+  "the bees knees"                          = "The Bee's Knees",
+  "the food ethics course that featured the documentary \"the cost of bounty\" (?)" = "Food for Thought",
+  "victorian holiday  soiree"               = "Historical Dancing",
+  "wine classes"                            = "Wines of the World",
+  "wines around the world"                  = "Wines of the World",
+  "wines from france tasting with mike lee" = "Wines of the World",
+  "wines of the world (oct 16): southern france: exploring rhone and the sun-kissed south of france" = "Wines of the World",
+  "wines of the world - california"         = "Wines of the World",
+  "wines of the world by mike lee"          = "Wines of the World",
+  "wreath-making at allerton, thursday, 12/5" = "Holiday Wreath Making",
+  "wreath-making."                          = "Holiday Wreath Making",
+  "wreathmaking"                            = "Holiday Wreath Making"
+)
+
+cat("Canonical course names defined:", length(unique(CANONICAL)), "\n")
+```
+
+---
+
+# 5. Helper Functions
+
+## 5.1 Decode Version A course dummy matrix
+
+```{r fn-decode-version-a}
+decode_version_a_course <- function(df) {
+  q1_cols       <- names(df)[str_starts(names(df), "Q1:")]
+  q1_dummy_cols <- q1_cols[!q1_cols %in% c("Q1:Other", "Q1:Other text")]
+
+  df |>
+    rowwise() |>
+    mutate(
+      course_name_raw = {
+        # find which Q1 dummy column = "1"
+        vals <- c_across(all_of(q1_dummy_cols))
+        sel  <- q1_dummy_cols[!is.na(vals) & vals == "1"]
+
+        if (length(sel) == 0) {
+          NA_character_
+        } else if ("Q1:Other" %in% names(df) &&
+                   !is.na(`Q1:Other`) && `Q1:Other` == "1") {
+          if ("Q1:Other text" %in% names(df)) `Q1:Other text`
+          else NA_character_
+        } else {
+          str_remove(sel[1], "^Q1:")
+        }
+      },
+      course_name_needs_review = is.na(course_name_raw)
+    ) |>
+    ungroup()
+}
+```
+
+## 5.2 Normalize free-text course names (Versions B and C)
+
+```{r fn-normalize-course}
+normalize_course <- function(raw_name, canonical_lookup) {
+  if (is.na(raw_name) || str_trim(raw_name) == "") {
+    return(list(course_name = NA_character_,
+                match_score = NA_real_,
+                course_name_needs_review = TRUE))
+  }
+
+  # Normalize smart quotes, en dashes, and trailing punctuation before matching
+  clean <- raw_name |>
+    str_trim() |>
+    str_to_lower() |>
+    str_replace_all("\u2019|\u2018", "'") |>   # curly apostrophes -> straight
+    str_replace_all("\u201c|\u201d", "\"") |>  # curly quotes -> straight
+    str_replace_all("\u2013|\u2014", "-") |>   # en/em dash -> hyphen
+    str_remove("\\.$")                          # strip trailing period
+
+  # 1. Exact match first
+  if (clean %in% names(canonical_lookup)) {
+    return(list(course_name = unname(canonical_lookup[clean]),
+                match_score = 100,
+                course_name_needs_review = FALSE))
+  }
+
+  # 2. Fuzzy match using Jaro-Winkler
+  keys  <- names(canonical_lookup)
+  sims  <- stringsim(clean, keys, method = "jw")
+  best  <- which.max(sims)
+  score <- round(sims[best] * 100)
+
+  list(
+    course_name              = if (score >= 85) unname(canonical_lookup[keys[best]]) else raw_name,
+    match_score              = score,
+    course_name_needs_review = score < 85
+  )
+}
+```
+
+## 5.3 Parse attendance dates
+
+```{r fn-parse-date}
+parse_survey_date <- function(raw) {
+  if (is.na(raw) || str_trim(raw) == "") {
+    return(list(attendance_date  = NA_character_,
+                date_confidence  = "missing",
+                is_multi_session = FALSE))
+  }
+
+  s <- str_trim(as.character(raw))
+
+  # Strip "xx/xx/xxxx" artifact prefix
+  s <- str_remove(s, "^xx/xx/xxxx") |> str_trim()
+
+  # Detect date range (contains separator AND a slash for dates)
+  is_multi <- str_detect(s, "[\u2013\\-]") && str_detect(s, "/")
+  if (is_multi) {
+    s <- str_split(s, "[\u2013\\-]")[[1]][1] |> str_trim()
+  }
+
+  # Try standard parsing
+  parsed <- suppressWarnings(mdy(s) %||% dmy(s) %||% ymd(s))
+
+  if (!is.na(parsed)) {
+    return(list(attendance_date  = as.character(parsed),
+                date_confidence  = "exact",
+                is_multi_session = is_multi))
+  }
+
+  # Try extracting first date-like fragment
+  fragment <- str_extract(s, "\\d{1,2}/\\d{1,2}/\\d{2,4}")
+  parsed2  <- suppressWarnings(mdy(fragment))
+
+  list(
+    attendance_date  = if (!is.na(parsed2)) as.character(parsed2) else NA_character_,
+    date_confidence  = if (!is.na(parsed2)) "approximate" else "missing",
+    is_multi_session = is_multi
+  )
+}
+```
+
+## 5.4 Decode binary rating dummies to ordinal scores
+
+```{r fn-decode-rating}
+# Score maps
+SATISFACTION_MAP <- c(
+  "Very satisfied"          = 5L,
+  "Somewhat satisfied"      = 4L,
+  "Neutral"                 = 3L,
+  "Somewhat dissatisfied"   = 2L,
+  "Very dissatisfied"       = 1L
+)
+
+LEARNING_MAP <- c(
+  "I learned a lot of new information"   = 3L,
+  "I learned somewhat new information"   = 2L,
+  "I did not learn much new information" = 1L
+)
+
+RECOMMEND_MAP <- c(
+  "Very Likely"     = 3L,
+  "Somewhat likely" = 2L,
+  "Not likely"      = 1L
+)
+
+decode_rating <- function(df, prefix, score_map) {
+  cols <- paste0(prefix, names(score_map))
+  cols <- cols[cols %in% names(df)]
+  if (length(cols) == 0) {
+    return(df |> mutate(.label = NA_character_, .score = NA_integer_,
+                        rating_conflict = FALSE))
+  }
+
+  df |>
+    rowwise() |>
+    mutate(
+      .n_sel   = sum(c_across(all_of(cols)) == "1", na.rm = TRUE),
+      .label   = {
+        sel <- names(score_map)[c_across(all_of(cols)) == "1"]
+        if (length(sel) == 0) NA_character_ else sel[1]
+      },
+      .score          = if (is.na(.label)) NA_integer_ else score_map[.label],
+      rating_conflict = .n_sel > 1
+    ) |>
+    select(-.n_sel) |>
+    ungroup()
+}
+```
+
+## 5.5 Collapse multi-select dummy columns to a comma-separated string
+
+```{r fn-collapse-dummies}
+collapse_dummies <- function(df, prefix, exclude_suffixes = c("text", "Text")) {
+  cols <- names(df)[str_starts(names(df), fixed(prefix))]
+
+  # Exclude free-text companion columns
+  text_cols  <- cols[str_detect(cols, paste(exclude_suffixes, collapse = "|"))]
+  dummy_cols <- setdiff(cols, text_cols)
+
+  if (length(dummy_cols) == 0) return(rep(NA_character_, nrow(df)))
+
+  labels <- str_remove(dummy_cols, fixed(prefix))
+
+  apply(df[dummy_cols], 1, function(row) {
+    selected <- labels[!is.na(row) & row == "1"]
+    if (length(selected) == 0) NA_character_
+    else paste(selected, collapse = ", ")
+  })
+}
+```
+
+---
+
+# 6. Question Prefix Map by Version
+
+Maps each version + concept to the correct question prefix.
+
+```{r prefix-map}
+get_prefix <- function(ver, concept) {
+  map <- list(
+    A = list(sat = "Q3:", learn = "Q4:", rec = "Q5:",
+             instr = "Q7:", mktg = "Q10:"),
+    B = list(sat = "Q2:", learn = "Q3:", rec = "Q4:",
+             instr = "Q6:", mktg = "Q7:"),
+    C = list(sat = "Q3:", learn = "Q4:", rec = "Q5:",
+             instr = "Q7:", mktg = "Q10:")
+  )
+  map[[ver]][[concept]] %||% ""
+}
+
+get_text_col <- function(df, ver, field) {
+  col_map <- list(
+    A = list(
+      general       = "Q9:Do you have any suggestions for improving the folk school offerings at The Farms?",
+      course_suggest= "Q8:Do you have any suggestions for improving this course in the future?",
+      more_learn    = "Q6:In addition to what you learned in this class, what else would you like to learn on this subject?"
+    ),
+    B = list(
+      general       = "Q9:Do you have any suggestions for improving your overall experience in the future?",
+      testimonial   = "Q10:We are always looking for positive testimonials to use in marketing for potential students. If you are willing, please share a little more about your experience!",
+      more_learn    = "Q5:What else would you like to learn at The Farms?"
+    ),
+    C = list(
+      general       = "Q9:Do you have any suggestions for improving the folk school offerings at The Farms?",
+      course_suggest= "Q8:Do you have any suggestions for improving this course in the future?",
+      more_learn    = "Q6:In addition to what you learned in this course, what else would you like to learn on this subject?"
+    )
+  )
+  col <- col_map[[ver]][[field]]
+  if (!is.null(col) && col %in% names(df)) col else NULL
+}
+```
+
+---
+
+# 7. Clean Each Survey Version
+
+## 7.1 Clean each file individually, then combine
+
+Cleaning is done **per source file** (before `bind_rows`) so every file retains its own original column names. This prevents the column-collision problem where multiple Q1 variants exist after stacking.
+
+```{r clean-per-file}
+# Clean each file with its appropriate version function
+cleaned_frames <- imap(frames_raw, function(df, file_id) {
+  ver <- version_map$survey_version[version_map$file_id == file_id]
+  if (ver == "A") clean_version_a(df)
+  else if (ver == "B") clean_version_b(df)
+  else if (ver == "C") clean_version_c(df)
+})
+
+cat("Cleaned files:\n")
+walk2(names(cleaned_frames), cleaned_frames,
+      ~ cat(" ", .x, ":", nrow(.y), "rows\n"))
+```
+
+## 7.2 Clean Version A
+
+```{r clean-version-a}
+clean_version_a <- function(df) {
+
+  # Step 1: Decode course from dummy matrix
+  df <- decode_version_a_course(df)
+
+  # Apply canonical lookup to decoded names
+  df <- df |>
+    mutate(
+      course_name = coalesce(
+        CANONICAL[str_to_lower(str_trim(course_name_raw))],
+        course_name_raw
+      )
+    )
+
+  # Step 2: Parse attendance dates (Q2)
+  date_col <- "Q2:Which date(s) did you attend the course?"
+  if (date_col %in% names(df)) {
+    date_results     <- map(df[[date_col]], parse_survey_date)
+    df$attendance_date   <- map_chr(date_results, "attendance_date")
+    df$date_confidence   <- map_chr(date_results, "date_confidence")
+    df$is_multi_session  <- map_lgl(date_results, "is_multi_session")
+  } else {
+    df <- df |> mutate(attendance_date = NA_character_,
+                       date_confidence = "missing",
+                       is_multi_session = FALSE)
+  }
+
+  # Step 3: Decode ratings
+  df <- decode_rating(df, "Q3:", SATISFACTION_MAP) |>
+    rename(satisfaction_label = .label, satisfaction_rating = .score)
+  df <- decode_rating(df, "Q4:", LEARNING_MAP) |>
+    rename(learning_label = .label, learning_rating = .score)
+  df <- decode_rating(df, "Q5:", RECOMMEND_MAP) |>
+    rename(recommend_label = .label, recommend_rating = .score)
+  df <- decode_rating(df, "Q7:", SATISFACTION_MAP) |>
+    rename(instructor_label = .label, instructor_rating = .score)
+
+  # Step 4: Marketing channels
+  df <- df |> mutate(
+    marketing_channels      = collapse_dummies(df, "Q10:"),
+    marketing_channel_count = str_count(marketing_channels, ",") + 1L,
+    marketing_channel_count = if_else(is.na(marketing_channels), NA_integer_,
+                                      marketing_channel_count)
+  )
+
+  # Step 5: Demographics
+  df <- df |> mutate(
+    race_ethnicity   = collapse_dummies(df, "Q14:"),
+    hispanic_latino  = collapse_dummies(df, "Q15:"),
+    gender_identity  = collapse_dummies(df, "Q16:"),
+    age_group        = collapse_dummies(df, "Q17:")
+  )
+
+  # Step 6: Free text
+  df <- df |> mutate(
+    general_suggestions = if (!is.null(get_text_col(df, "A", "general")))
+                            .data[[get_text_col(df, "A", "general")]] else NA_character_,
+    course_suggestions  = if (!is.null(get_text_col(df, "A", "course_suggest")))
+                            .data[[get_text_col(df, "A", "course_suggest")]] else NA_character_,
+    additional_learning = if (!is.null(get_text_col(df, "A", "more_learn")))
+                            .data[[get_text_col(df, "A", "more_learn")]] else NA_character_,
+    city_residence      = if ("Q18:City/Town/County of Residence" %in% names(df))
+                            `Q18:City/Town/County of Residence` else NA_character_,
+    satisfaction_comment = NA_character_,
+    testimonial          = NA_character_,
+    primary_marketing_source = NA_character_
+  )
+
+  df
+}
+```
+
+## 7.3 Clean Version B
+
+```{r clean-version-b}
+clean_version_b <- function(df) {
+
+  # Step 1: Normalize free-text Q1 course name
+  # Each file is cleaned individually so only ONE Q1 column exists here
+  q1_col <- names(df)[str_detect(str_to_lower(names(df)), "which course")]
+  if (length(q1_col) == 0) q1_col <- names(df)[str_starts(names(df), "Q1:")]
+  q1_col <- q1_col[1]
+
+  course_results <- map(df[[q1_col]], normalize_course,
+                        canonical_lookup = CANONICAL)
+
+  df <- df |>
+    mutate(
+      course_name_raw          = df[[q1_col]],
+      course_name              = map_chr(course_results, "course_name"),
+      course_match_score       = map_dbl(course_results, "match_score"),
+      course_name_needs_review = map_lgl(course_results, "course_name_needs_review")
+    )
+
+  # Version B has no date field
+  df <- df |> mutate(
+    attendance_date  = NA_character_,
+    date_confidence  = NA_character_,
+    is_multi_session = FALSE
+  )
+
+  # Step 2: Decode ratings
+  df <- decode_rating(df, "Q2:", SATISFACTION_MAP) |>
+    rename(satisfaction_label = .label, satisfaction_rating = .score)
+  df <- decode_rating(df, "Q3:", LEARNING_MAP) |>
+    rename(learning_label = .label, learning_rating = .score)
+  df <- decode_rating(df, "Q4:", RECOMMEND_MAP) |>
+    rename(recommend_label = .label, recommend_rating = .score)
+  df <- decode_rating(df, "Q6:", SATISFACTION_MAP) |>
+    rename(instructor_label = .label, instructor_rating = .score)
+
+  # Satisfaction comment (Version B only)
+  sat_comment_col <- names(df)[str_detect(names(df), "Tell us more: text")][1]
+  df <- df |> mutate(
+    satisfaction_comment = if (!is.na(sat_comment_col) && sat_comment_col %in% names(df))
+                             .data[[sat_comment_col]] else NA_character_
+  )
+
+  # Step 3: Marketing channels (Q7 primary, Q8 secondary)
+  df <- df |> mutate(
+    marketing_channels       = collapse_dummies(df, "Q7:"),
+    marketing_channel_count  = str_count(marketing_channels, ",") + 1L,
+    marketing_channel_count  = if_else(is.na(marketing_channels), NA_integer_,
+                                       marketing_channel_count),
+    primary_marketing_source = collapse_dummies(df, "Q8:")
+  )
+
+  # Step 4: Demographics
+  df <- df |> mutate(
+    race_ethnicity   = collapse_dummies(df, "Q14:"),
+    hispanic_latino  = collapse_dummies(df, "Q15:"),
+    gender_identity  = collapse_dummies(df, "Q16:"),
+    age_group        = collapse_dummies(df, "Q17:")
+  )
+
+  # Step 5: Free text
+  general_col     <- get_text_col(df, "B", "general")
+  testimonial_col <- get_text_col(df, "B", "testimonial")
+  more_learn_col  <- get_text_col(df, "B", "more_learn")
+
+  df <- df |> mutate(
+    general_suggestions = if (!is.null(general_col))     .data[[general_col]]     else NA_character_,
+    testimonial         = if (!is.null(testimonial_col)) .data[[testimonial_col]] else NA_character_,
+    additional_learning = if (!is.null(more_learn_col))  .data[[more_learn_col]]  else NA_character_,
+    course_suggestions  = NA_character_,
+    city_residence      = if ("Q18:City/Town/County of Residence" %in% names(df))
+                            `Q18:City/Town/County of Residence` else NA_character_
+  )
+
+  df
+}
+```
+
+## 7.4 Clean Version C
+
+```{r clean-version-c}
+clean_version_c <- function(df) {
+
+  # Step 1: Normalize free-text Q1 course name
+  # Each file is cleaned individually so only ONE Q1 column exists here
+  q1_col <- names(df)[str_detect(str_to_lower(names(df)), "folk school courses|which course")]
+  if (length(q1_col) == 0) q1_col <- names(df)[str_starts(names(df), "Q1:")]
+  q1_col <- q1_col[1]
+
+  course_results <- map(df[[q1_col]], normalize_course,
+                        canonical_lookup = CANONICAL)
+
+  df <- df |>
+    mutate(
+      course_name_raw          = df[[q1_col]],
+      course_name              = map_chr(course_results, "course_name"),
+      course_match_score       = map_dbl(course_results, "match_score"),
+      course_name_needs_review = map_lgl(course_results, "course_name_needs_review")
+    )
+
+  # Step 2: Parse attendance dates (Q2)
+  date_col <- names(df)[str_detect(str_to_lower(names(df)), "which date")][1]
+  if (!is.na(date_col) && date_col %in% names(df)) {
+    date_results     <- map(df[[date_col]], parse_survey_date)
+    df$attendance_date   <- map_chr(date_results, "attendance_date")
+    df$date_confidence   <- map_chr(date_results, "date_confidence")
+    df$is_multi_session  <- map_lgl(date_results, "is_multi_session")
+  } else {
+    df <- df |> mutate(attendance_date = NA_character_,
+                       date_confidence = "missing",
+                       is_multi_session = FALSE)
+  }
+
+  # Step 3: Decode ratings
+  df <- decode_rating(df, "Q3:", SATISFACTION_MAP) |>
+    rename(satisfaction_label = .label, satisfaction_rating = .score)
+  df <- decode_rating(df, "Q4:", LEARNING_MAP) |>
+    rename(learning_label = .label, learning_rating = .score)
+  df <- decode_rating(df, "Q5:", RECOMMEND_MAP) |>
+    rename(recommend_label = .label, recommend_rating = .score)
+  df <- decode_rating(df, "Q7:", SATISFACTION_MAP) |>
+    rename(instructor_label = .label, instructor_rating = .score)
+
+  # Step 4: Marketing channels
+  df <- df |> mutate(
+    marketing_channels      = collapse_dummies(df, "Q10:"),
+    marketing_channel_count = str_count(marketing_channels, ",") + 1L,
+    marketing_channel_count = if_else(is.na(marketing_channels), NA_integer_,
+                                      marketing_channel_count)
+  )
+
+  # Step 5: Demographics
+  df <- df |> mutate(
+    race_ethnicity   = collapse_dummies(df, "Q14:"),
+    hispanic_latino  = collapse_dummies(df, "Q15:"),
+    gender_identity  = collapse_dummies(df, "Q16:"),
+    age_group        = collapse_dummies(df, "Q17:")
+  )
+
+  # Step 6: Free text
+  general_col      <- get_text_col(df, "C", "general")
+  course_sug_col   <- get_text_col(df, "C", "course_suggest")
+  more_learn_col   <- get_text_col(df, "C", "more_learn")
+
+  df <- df |> mutate(
+    general_suggestions = if (!is.null(general_col))    .data[[general_col]]    else NA_character_,
+    course_suggestions  = if (!is.null(course_sug_col)) .data[[course_sug_col]] else NA_character_,
+    additional_learning = if (!is.null(more_learn_col)) .data[[more_learn_col]] else NA_character_,
+    satisfaction_comment     = NA_character_,
+    testimonial              = NA_character_,
+    primary_marketing_source = NA_character_,
+    city_residence           = if ("Q18:City/Town/County of Residence" %in% names(df))
+                                 `Q18:City/Town/County of Residence` else NA_character_
+  )
+
+  df
+}
+```
+
+---
+
+# 8. Combine & Select Output Columns
+
+```{r combine}
+OUTPUT_COLS <- c(
+  "respondent_id", "source_file", "survey_version",
+  "course_name", "course_name_raw", "course_name_needs_review",
+  "attendance_date", "date_confidence", "is_multi_session",
+  "satisfaction_rating", "satisfaction_label",
+  "satisfaction_comment", "rating_conflict",
+  "learning_rating", "recommend_rating", "instructor_rating",
+  "additional_learning", "course_suggestions",
+  "general_suggestions", "testimonial",
+  "marketing_channels", "marketing_channel_count",
+  "primary_marketing_source",
+  "race_ethnicity", "hispanic_latino",
+  "gender_identity", "age_group", "city_residence"
+)
+
+# Add any missing columns as NA before binding
+add_missing_cols <- function(df, cols) {
+  missing <- setdiff(cols, names(df))
+  for (col in missing) df[[col]] <- NA
+  df
+}
+
+master_clean <- bind_rows(
+  map(cleaned_frames, ~ add_missing_cols(.x, OUTPUT_COLS))
+) |>
+  select(all_of(OUTPUT_COLS)) |>
+  mutate(across(where(is.character), ~ na_if(str_trim(.), "")))
+
+cat("Master dataset rows:", nrow(master_clean), "\n")
+cat("Master dataset cols:", ncol(master_clean), "\n")
+```
+
+---
+
+# 9. Flag Rows for Review
+
+```{r flag-rows}
+flagged_rows <- master_clean |>
+  filter(
+    course_name_needs_review == TRUE |
+    isTRUE(rating_conflict)          |
+    date_confidence %in% c("approximate", "missing")
+  )
+
+cat("Flagged rows:", nrow(flagged_rows), "\n")
+cat("  - Needs course review:  ",
+    sum(master_clean$course_name_needs_review, na.rm = TRUE), "\n")
+cat("  - Rating conflict:      ",
+    sum(master_clean$rating_conflict, na.rm = TRUE), "\n")
+cat("  - Approx/missing date:  ",
+    sum(master_clean$date_confidence %in% c("approximate","missing"),
+        na.rm = TRUE), "\n")
+```
+
+---
+
+# 10. Quality Assurance Checks
+
+```{r qa-checks}
+cat("======= QA CHECKS =======\n\n")
+
+# 1. Row count
+cat("1. Total rows:", nrow(master_clean),
+    "(expected 494)\n")
+
+# 2. No duplicate respondent IDs
+dupe_ids <- sum(duplicated(master_clean$respondent_id))
+cat("2. Duplicate respondent IDs:", dupe_ids,
+    if (dupe_ids == 0) "[PASS]" else "[FAIL]", "\n")
+
+# 3. All 8 source files present
+files_present <- n_distinct(master_clean$source_file)
+cat("3. Source files present:", files_present,
+    "(expected 8)",
+    if (files_present == 8) "[PASS]" else "[FAIL]", "\n")
+
+# 4. satisfaction_rating range 1-5, allowing NA
+sat_ok <- all(is.na(master_clean$satisfaction_rating) |
+                master_clean$satisfaction_rating %in% 1:5)
+cat("4. satisfaction_rating in 1-5:",
+    if (sat_ok) "[PASS]" else "[FAIL]", "\n")
+
+# 5. learning_rating range 1-3, allowing NA
+learn_ok <- all(is.na(master_clean$learning_rating) |
+                  master_clean$learning_rating %in% 1:3)
+cat("5. learning_rating in 1-3:",
+    if (learn_ok) "[PASS]" else "[FAIL]", "\n")
+
+# 6. recommend_rating range 1-3, allowing NA
+rec_ok <- all(is.na(master_clean$recommend_rating) |
+                master_clean$recommend_rating %in% 1:3)
+cat("6. recommend_rating in 1-3:",
+    if (rec_ok) "[PASS]" else "[FAIL]", "\n")
+
+# 7. Version B rows have NA attendance_date
+vb_dates <- master_clean |>
+  filter(survey_version == "B") |>
+  pull(attendance_date)
+vb_date_ok <- all(is.na(vb_dates))
+cat("7. Version B attendance_date all NA:",
+    if (vb_date_ok) "[PASS]" else "[FAIL]", "\n")
+
+# 8. Fix one known typo first
+master_clean <- master_clean %>%
+  mutate(
+    attendance_date = if_else(
+      respondent_id == "219228_0012",
+      "2023-09-30",
+      attendance_date
+    )
+  )
+
+
+# 9. Remove special string errors
+master_clean <- master_clean %>%
+  mutate(across(
+    where(is.character),
+    ~ .x %>%
+      str_replace_all("â€™", "'") %>%
+      str_replace_all("â€œ|â€", '"') %>%
+      str_replace_all("â€“", "-")
+  ))
+
+fix_text_encoding <- function(x) {
+
+  if (!is.character(x)) return(x)
+
+  x %>%
+    str_replace_all("â€™", "'") %>%      # apostrophe
+    str_replace_all("â€˜", "'") %>%
+    str_replace_all("â€œ", '"') %>%
+    str_replace_all("â€", '"') %>%
+    str_replace_all("â€“", "-") %>%      # en dash
+    str_replace_all("â€”", "-") %>%      # em dash
+    str_replace_all("â€¦", "...") %>%    # ellipsis
+    str_replace_all("Â", "") %>%         # stray nbsp marker
+    str_replace_all("’|‘", "'") %>%
+    str_replace_all("“|”", '"') %>%
+    str_squish()
+}
+
+master_clean <- master_clean %>%
+  mutate(across(where(is.character), fix_text_encoding))
+
+  # 10. Cleaning city
+
+    clean_city_only <- function(x){
+  
+  x <- str_trim(x)
+  
+  x <- ifelse(x == "" | is.na(x), NA, x)
+  
+  x <- str_to_lower(x)
+  
+  # remove punctuation noise
+  x <- str_replace_all(x, "\\(", " ")
+  x <- str_replace_all(x, "\\)", " ")
+  x <- str_replace_all(x, ",", " ")
+  x <- str_replace_all(x, "/", " ")
+  x <- str_replace_all(x, "-", " ")
+  
+  # remove words
+  x <- str_replace_all(x, "illinois|ill|il|usa", " ")
+  x <- str_replace_all(x, "county|co\\.", " ")
+  
+  x <- str_squish(x)
+  
+  # fix typos
+  x <- str_replace_all(x, "chapaign|champain", "champaign")
+  x <- str_replace_all(x, "monticiello", "monticello")
+  x <- str_replace_all(x, "sangsmon", "sangamon")
+  
+  case_when(
+  
+  str_detect(x, "champaign") ~ "Champaign",
+  str_detect(x, "urbana") ~ "Urbana",
+  str_detect(x, "savoy") ~ "Savoy",
+  str_detect(x, "mahomet") ~ "Mahomet",
+  str_detect(x, "monticello") ~ "Monticello",
+  str_detect(x, "decatur") ~ "Decatur",
+  str_detect(x, "bloomington") ~ "Bloomington",
+  str_detect(x, "normal") ~ "Normal",
+  str_detect(x, "tolono") ~ "Tolono",
+  str_detect(x, "fisher") ~ "Fisher",
+  str_detect(x, "rantoul") ~ "Rantoul",
+  str_detect(x, "chicago") ~ "Chicago",
+  str_detect(x, "springfield") ~ "Springfield",
+  str_detect(x, "danville") ~ "Danville",
+  str_detect(x, "mattoon") ~ "Mattoon",
+  str_detect(x, "charleston") ~ "Charleston",
+  str_detect(x, "peoria") ~ "Peoria",
+  str_detect(x, "naperville") ~ "Naperville",
+  str_detect(x, "joliet") ~ "Joliet",
+  str_detect(x, "aurora") ~ "Aurora",
+  str_detect(x, "evanston") ~ "Evanston",
+  str_detect(x, "batavia") ~ "Batavia",
+  str_detect(x, "lincoln") ~ "Lincoln",
+  str_detect(x, "mansfield") ~ "Mansfield",
+  str_detect(x, "cisco") ~ "Cisco",
+  str_detect(x, "bement") ~ "Bement",
+  str_detect(x, "homer") ~ "Homer",
+  str_detect(x, "ogden") ~ "Ogden",
+  str_detect(x, "ivesdale") ~ "Ivesdale",
+  str_detect(x, "farmer city") ~ "Farmer City",
+  
+  # if only county listed
+  str_detect(x, "piatt") ~ "Piatt County",
+  str_detect(x, "mclean") ~ "McLean County",
+  str_detect(x, "macon") ~ "Macon County",
+  str_detect(x, "sangamon") ~ "Sangamon County",
+  str_detect(x, "coles") ~ "Coles County",
+  str_detect(x, "dewitt") ~ "DeWitt County",
+  str_detect(x, "livingston") ~ "Livingston County",
+  
+  TRUE ~ str_to_title(x)
+  )
+    }
+    
+    master_clean <- master_clean %>%
+  mutate(
+    city_residence = city_residence %>%
+      str_replace_all(" County", "") %>%
+      str_replace_all("\\sW$", "") %>%
+      str_squish()
+  )
+  
+# 11. Remove some columns
+
+master_clean <- master_clean %>%
+  select(
+    -any_of(c(
+      "course_name_raw",
+      "course_name_needs_review",
+      "date_confidence",
+      "is_multi_session",
+      "rating_conflict",
+      "primary_marketing_source"
+    ))
+  )
+
+# 12. No dates before 2023
+early_dates <- master_clean |>
+  filter(!is.na(attendance_date),
+         ymd(attendance_date) < ymd("2023-01-01")) |>
+  nrow()
+cat("8. Dates before 2023:", early_dates,
+    if (early_dates == 0) "[PASS]" else "[REVIEW]", "\n")
+
+# 13. Output has exactly 28 columns
+cat("9. Output columns:", ncol(master_clean),
+    "(expected 28)",
+    if (ncol(master_clean) == 28) "[PASS]" else "[FAIL]", "\n")
+```
+
+---
+
+# 12. Export to Excel
+
+```{r export}
+write_csv(master_clean,
+  path = "C:/Users/hahp2/OneDrive - University of Illinois - Urbana/Spring2026UIUC/STAT427 Statistical Consulting/Allerton Raw Data/Folk School Raw Data/Folk School Survey Results/allerton_survey_clean.csv"
+)
+```
+
+---
+
+*Generated by Allerton Folk School Analytics · `r Sys.Date()`*
