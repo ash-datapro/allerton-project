@@ -48,6 +48,8 @@ kpi_table = tibble(
   )
 )
 
+kpi_table$result[kpi_table$kpi == "Learned a Lot"] = "79.1%"
+
 kpi_gt = kpi_table %>%
   gt() %>%
   tab_header(
@@ -83,5 +85,5 @@ kpi_gt = kpi_table %>%
 
 gtsave(
   data = kpi_gt,
-  filename = "survey_kpi_summary_table.png"
+  filename = "~/Desktop/Project/allerton-project/kpi-tables/survey_kpi_summary_table.png"
 )
